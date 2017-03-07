@@ -2,7 +2,7 @@
 **Observations:**
 - *ras.bin image files in the source tree are just placeholders*
 - *real binary ras.bin files will only be published in release packages for each supported device*
-- __*`https://github.com/vch42/NSA3xx-usb-recovery-stick/releases`*__
+- __*Release section is [here](https://github.com/vch42/NSA3xx-usb-recovery-stick/releases)*__
 
 ## About
 With "create_usb" script you can easily create a recovery USB stick for the following Zyxel NAS boxes:
