@@ -92,12 +92,20 @@ if [ -s /mnt/ram1/DATA_0101 ]; then
 		echo "equal!"
 	else
 		echo "NOT equal! /zyxel/sbin/mrd_model -s ${file_model}"
-		#force upgrade
-		#/zyxel/sbin/mrd_model -s ${file_model}
-		# All leds show red
+		# SYS led show red
 		setLED SYS RED BLINK
-		setLED HD RED BLINK
-		setLED COPY RED BLINK
+		#setLED HD RED BLINK
+		#setLED COPY RED BLINK
+		echo "!!!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!!!!!!"
+		echo "WRONG MODEL NUMBER!!!!!!!!!!!!!!!!!!!!!!!!"
+		echo "FORCED UPGRADE WILL START IN 60sec. !!!!!!"
+		echo "IF NOT SURE, UNPLUG POWER NOW!!!!!!!!!!!!!"
+		sleep 45; echo;
+		echo "FORCED UPGRADE WILL START IN 15sec. !!!!!!"
+		echo "IF NOT SURE, UNPLUG POWER NOW!!!!!!!!!!!!!"
+		sleep 15
+		#force upgrade
+		/zyxel/sbin/mrd_model -s ${file_model}
 		exit 1
 	fi
 else
