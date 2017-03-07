@@ -37,7 +37,7 @@ if [ -z "$2" ];
 		echo 'No MAC address given. Keeping 00:19:cb:00:51:81'
 		sleep 5
 	else
-		if [ echo $2 | egrep "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$" ];
+		if [[ echo $2 | egrep "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$" ]];
 			then
 				sed -i "s/mrd_mac 00 19 CB 00 51 81/mrd_mac $(echo $2 | sed -e 's/:/ /g')/" /tmp/mnt/nsa310_fw/usb_key_func.sh.2
 			else
