@@ -1,0 +1,2 @@
+b8ff0367581e5c4350f2437dd7256ee0  /mnt/parnerkey/nsa310_fw/mrd_mac
+b42ddb0542b83e0f8bd3fc1d07964342  /mnt/parnerkey/nsa310_fw/ras.bin

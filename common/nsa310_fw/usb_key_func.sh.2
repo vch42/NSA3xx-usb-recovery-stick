@@ -1,0 +1,320 @@
+#!/bin/sh
+
+#This script upgrades the
+#	1. Extract and verify the firmware.
+#	1. Copy the sysdisk.img.gz to NAND.
+#	2. Write kernel to NOR flash.
+#	3. Update checksum in NAND.
+
+ECHO="/bin/echo"
+USB_PATH="/mnt/parnerkey"
+USB_FW_PATH=${USB_PATH}"/nsa310_fw"
+MD5KEY="/etc/Zy_Private"
+
+FW_FILE=${USB_FW_PATH}"/ras.bin"
+
+# path to erase, mount, and write
+NANDPATH="/zyxel/mnt/nand2"
+
+# which kernel and system image partitions
+CURR_BOOTFROM=`/zyxel/sbin/info_printenv curr_bootfrom | awk -F"=" '{print $2}'`
+if [ ${CURR_BOOTFROM} -eq 1 ]; then
+	NEXT_BOOTFROM=2
+elif [ ${CURR_BOOTFROM} -eq 2 ]; then
+	NEXT_BOOTFROM=1
+else
+	echo "ERROR!!! Invalid INFO value 'curr_bootfrom'!"
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+
+CURR_KERNEL_MTD=`/zyxel/sbin/info_printenv kernel_mtd_${CURR_BOOTFROM} | awk -F"=" '{print $2}'`
+CURR_IMG_MTD=`/zyxel/sbin/info_printenv sysimg_mtd_${CURR_BOOTFROM} | awk -F"=" '{print $2}'`
+
+NEXT_KERNEL_MTD=`/zyxel/sbin/info_printenv kernel_mtd_${NEXT_BOOTFROM} | awk -F"=" '{print $2}'`
+NEXT_IMG_MTD=`/zyxel/sbin/info_printenv sysimg_mtd_${NEXT_BOOTFROM} | awk -F"=" '{print $2}'`
+
+md5sum -c /mnt/parnerkey/NSA310_md5sum.txt
+if [ $? -ne 0 ]; then
+	echo "Key is corrupt"
+	exit 0
+fi
+
+# disable power button
+/bin/echo "0" > /proc/shutdownStatus
+
+# SYS LED blinks orange
+/sbin/setLED SYS ORANGE BLINK
+sleep 1
+
+
+# Using /dev/ram2 as a temparory buffer
+/bin/mkdir -p /mnt/ram1 > /dev/null 2>&1
+/bin/mkdir -p /mnt/ram2 > /dev/null 2>&1
+
+/bin/rm -rf /mnt/ram1/* > /dev/null 2>&1
+/bin/rm -rf /mnt/ram2/* > /dev/null 2>&1
+
+/sbin/bin2ram little "${FW_FILE}" /mnt/ram2/tlv.bin > /dev/null 2>&1
+# ROMBIN is 0x04, firmware package type
+if [ $? -ne 4 ]; then
+	echo "Fail to extract FW file!"
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+/sbin/fw_unpack -C /mnt/ram1 -i /mnt/ram2/tlv.bin > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+	echo "Fail to unpack FW file!"
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+/bin/rm -f /mnt/ram2/tlv.bin > /dev/null 2>&1
+
+# check model number first
+if [ -s /mnt/ram1/DATA_0101 ]; then
+	board_model=`/zyxel/sbin/mrd_model -p`
+	file_model=`cat /mnt/ram1/DATA_0101`
+	echo -n "board_model=(${board_model}), file_model=(${file_model}) ... "
+
+	if [ "x${board_model}" == "x${file_model}" ]; then
+		echo "equal!"
+	else
+		echo "NOT equal! /zyxel/sbin/mrd_model -s ${file_model}"
+		#force upgrade
+		#/zyxel/sbin/mrd_model -s ${file_model}
+		# All leds show red
+		setLED SYS RED BLINK
+		setLED HD RED BLINK
+		setLED COPY RED BLINK
+		exit 1
+	fi
+else
+	echo "No model number in firmware file, skip upgrade procedure."
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+# pre-process action
+if [ -s /mnt/ram1/DATA_a000 ]; then
+	chmod 755 /mnt/ram1/DATA_a000
+	/mnt/ram1/DATA_a000
+	rm -rf /mnt/ram1/DATA_a000
+fi
+
+if [ -f /mnt/ram1/DATA_1000 ]; then
+	CORE_MD5=`md5sum /mnt/ram1/DATA_1000 | awk '{print $1}'`
+	CORE_FILE=`cat /mnt/ram1/DATA_0200`
+
+	if [ "${CORE_MD5}" == "${CORE_FILE}" ]; then
+		echo "Kernel checksum pass!"
+	else
+		echo "Kernel checksum MISMATCH!"
+		# All leds show red
+		setLED SYS RED BLINK
+		setLED HD RED BLINK
+		setLED COPY RED BLINK
+		exit 1
+	fi
+else
+	echo "No kernel checksum file, skip upgrade procedure."
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+
+if [ -f /mnt/ram1/DATA_1004 ]; then
+	ZLD_MD5=`md5sum /mnt/ram1/DATA_1004 | awk '{print $1}'`
+	ZLD_FILE=`cat /mnt/ram1/DATA_0201`
+
+	if [ "${CORE_MD5}" == "${CORE_FILE}" ]; then
+		echo "System image checksum pass!"
+	else
+		echo "System image checksum MISMATCH!"
+		# All leds show red
+		setLED SYS RED BLINK
+		setLED HD RED BLINK
+		setLED COPY RED BLINK
+		exit 1
+	fi
+else
+	echo "No system imgage checksum file, skip upgrade procedure."
+	# All leds show red
+	setLED SYS RED BLINK
+	setLED HD RED BLINK
+	setLED COPY RED BLINK
+	exit 1
+fi
+
+
+/bin/umount /dev/mtdblock${CURR_IMG_MTD} > /dev/null 2>&1
+/bin/umount /dev/mtdblock${NEXT_IMG_MTD} > /dev/null 2>&1
+
+
+if [ -s /mnt/ram1/DATA_1004 ]; then
+	/bin/mkdir -p ${NANDPATH}
+
+	# Mount spare sysdisk img partition
+	/sbin/flash_eraseall /dev/mtd${NEXT_IMG_MTD}
+	/bin/mount -t yaffs2 -o rw /dev/mtdblock${NEXT_IMG_MTD} ${NANDPATH} > /dev/null 2>&1
+	/bin/cp /mnt/ram1/DATA_1004 ${NANDPATH}/sysdisk.img.gz
+	/bin/umount ${NANDPATH} > /dev/null 2>&1
+	/bin/sync > /dev/null 2>&1
+
+	# Mount current booting sysdisk img partition
+	/sbin/flash_eraseall /dev/mtd${CURR_IMG_MTD}
+	/bin/mount -t yaffs2 -o rw /dev/mtdblock${CURR_IMG_MTD} ${NANDPATH} > /dev/null 2>&1
+	/bin/cp /mnt/ram1/DATA_1004 ${NANDPATH}/sysdisk.img.gz
+	/bin/umount ${NANDPATH} > /dev/null 2>&1
+	/bin/sync > /dev/null 2>&1
+
+fi
+
+if [ -s /mnt/ram1/DATA_1000 ]; then
+	# Mount spare kernel partition
+	/sbin/flash_eraseall /dev/mtd${NEXT_KERNEL_MTD}
+	/sbin/nandwrite -a -p /dev/mtd${NEXT_KERNEL_MTD} /mnt/ram1/DATA_1000
+
+	nandwrite_result=$?
+	nandwrite_retry=0
+
+	while [ "${nandwrite_result}" != "0" -a ${nandwrite_retry} != "3" ]
+	do
+		/sbin/flash_eraseall /dev/mtd${NEXT_KERNEL_MTD}
+		/sbin/nandwrite -a -p /dev/mtd${NEXT_KERNEL_MTD} /mnt/ram1/DATA_1000
+		nandwrite_result=$?
+		nandwrite_retry=$(($nandwrite_retry+1))
+	done
+
+	if [ "${nandwrite_result}" != "0" ]; then
+		echo "Fail to write kernel to nand"
+		setLED SYS RED BLINK
+		setLED HD RED BLINK
+		setLED COPY RED BLINK
+		exit 1
+	fi
+	/bin/sync > /dev/null 2>&1
+	/bin/rm -rf ${NANDPATH}/DATA_1000
+
+	# Mount current booting kernel partition
+	/sbin/flash_eraseall /dev/mtd${CURR_KERNEL_MTD}
+	/sbin/nandwrite -a -p /dev/mtd${CURR_KERNEL_MTD} /mnt/ram1/DATA_1000
+	nandwrite_result=$?
+	nandwrite_retry=0
+
+	while [ "${nandwrite_result}" != "0" -a ${nandwrite_retry} != "3" ]
+	do
+		/sbin/flash_eraseall /dev/mtd${CURR_KERNEL_MTD}
+		/sbin/nandwrite -a -p /dev/mtd${CURR_KERNEL_MTD} /mnt/ram1/DATA_1000
+		nandwrite_result=$?
+		nandwrite_retry=$(($nandwrite_retry+1))
+	done
+
+	if [ "${nandwrite_result}" != "0" ]; then
+		echo "Fail to write kernel to nand"
+		setLED SYS RED BLINK
+		setLED HD RED BLINK
+		setLED COPY RED BLINK
+		exit 1
+	fi
+	/bin/sync > /dev/null 2>&1
+	/bin/rm -rf ${NANDPATH}/DATA_1000
+fi
+
+
+# checksums
+if [ -s /mnt/ram1/DATA_0001 ]; then
+	/zyxel/sbin/info_setenv fwversion_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0001`
+	/zyxel/sbin/info_setenv fwversion_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0001`
+else
+	/zyxel/sbin/info_setenv fwversion_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv fwversion_${NEXT_BOOTFROM}
+fi
+
+if [ -s /mnt/ram1/DATA_0002 ]; then
+	/zyxel/sbin/info_setenv revision_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0002`
+	/zyxel/sbin/info_setenv revision_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0002`
+else
+	/zyxel/sbin/info_setenv revision_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv revision_${NEXT_BOOTFROM}
+fi
+
+if [ -s /mnt/ram1/DATA_0101 ]; then
+	/zyxel/sbin/info_setenv modelid_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0101`
+	/zyxel/sbin/info_setenv modelid_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0101`
+else
+	/zyxel/sbin/info_setenv modelid_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv modelid_${NEXT_BOOTFROM}
+fi
+
+if [ -s /mnt/ram1/DATA_0200 ]; then
+	/zyxel/sbin/info_setenv core_checksum_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0200`
+	/zyxel/sbin/info_setenv core_checksum_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0200`
+else
+	/zyxel/sbin/info_setenv core_checksum_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv core_checksum_${NEXT_BOOTFROM}
+fi
+
+if [ -s /mnt/ram1/DATA_0201 ]; then
+	/zyxel/sbin/info_setenv zld_checksum_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0201`
+	/zyxel/sbin/info_setenv zld_checksum_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0201`
+else
+	/zyxel/sbin/info_setenv zld_checksum_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv zld_checksum_${NEXT_BOOTFROM}
+fi
+
+if [ -s /mnt/ram1/DATA_0202 ]; then
+	/zyxel/sbin/info_setenv romfile_checksum_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0202`
+	/zyxel/sbin/info_setenv romfile_checksum_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0202`
+else
+	/zyxel/sbin/info_setenv romfile_checksum_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0202`
+	/zyxel/sbin/info_setenv romfile_checksum_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0202`
+fi
+
+if [ -s /mnt/ram1/DATA_0204 ]; then
+	/zyxel/sbin/info_setenv img_checksum_${CURR_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0204`
+	/zyxel/sbin/info_setenv img_checksum_${NEXT_BOOTFROM} `/bin/cat /mnt/ram1/DATA_0204`
+else
+	/zyxel/sbin/info_setenv img_checksum_${CURR_BOOTFROM}
+	/zyxel/sbin/info_setenv img_checksum_${NEXT_BOOTFROM}
+fi
+
+# post-process action
+if [ -s /mnt/ram1/DATA_a002 ]; then
+	chmod 755 /mnt/ram1/DATA_a002
+	/mnt/ram1/DATA_a002
+	rm -rf /mnt/ram1/DATA_a002
+fi
+
+# reset MAC
+${USB_FW_PATH}/mrd_mac 00 19 CB 00 51 81
+
+# enable power button
+/bin/echo "1" > /proc/shutdownStatus
+sleep 1
+
+/bin/sync
+
+/sbin/halt -f
+
+sleep 5
+
+exit 0
+
