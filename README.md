@@ -29,6 +29,7 @@ It is highly recomended to have console access to your NSA box during modding op
   - remove all cables for ~30sec
   - reconnect cables
   - power NSA up and test if the recovery succeded.
+  
 Obs.: *you can ommit the MAC address, in this case the default of 00:19:CB:00:51:81 will be setup after recovery*
 
 ### Manual stick creation
