@@ -41,7 +41,7 @@ if [ -z "$2" ];
 			then
 				sed -i "s/mrd_mac 00 19 CB 00 51 81/mrd_mac $(echo $2 | sed -e 's/:/ /g')/" /tmp/mnt/nsa310_fw/usb_key_func.sh.2
 			else
-				echo 'Invalid MAC given. Keeping 00:19:cb:00:51:81'
+				echo "Invalid MAC "$2" given. Keeping 00:19:cb:00:51:81"
 				sleep 5
 		fi
 fi
