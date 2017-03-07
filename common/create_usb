@@ -1,0 +1,46 @@
+#!/bin/sh
+
+if [ -z "$1" ] || [[ ! -b "$1" ] || [ ! -b "$1"1 ]]; then
+	echo "No options found, $1 is not a block device or "$1"1 partition does not exist."
+	echo 'Usage: create_usb device [XX:XX:XX:XX:XX:XX]'
+	echo 'eg. "create_usb /dev/sdd1 11:22:44:33:AD:AD" '
+	exit 1
+fi
+
+mkdir -p /tmp/mnt
+mount $1"1" /tmp/mnt > /dev/null 2>&1
+
+if [ $(echo $?) -ne 0 ]; then
+	echo $1"1 partition needs to have a filesystem."
+	echo "Cannot mount "$1"1, aborting."
+	exit 1
+fi
+
+echo;echo;echo '*****************************************************'
+echo "Will now write files to "$1"1!"
+echo $1"1 WILL BE WIPED!!!"
+sleep 5
+rm -rf /tmp/mnt > /dev/null 2>&1
+\cp -rpv ./content/* /tmp/mnt/; echo; echo; sleep 2
+
+
+if [ -z "$2" ];
+	then
+		echo 'No MAC address given. Keeping 00:19:cb:00:51:81'
+		sleep 5
+	else
+		if [ echo $2 | egrep "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$" ];
+			then
+				sed -i "s/mrd_mac 00 19 CB 00 51 81/mrd_mac $(echo $1 | sed -e 's/:/ /g')/" /tmp/mnt/nsa310_fw/usb_key_func.sh.2
+			else
+				echo 'Invalid MAC given. Keeping 00:19:cb:00:51:81'
+				sleep 5
+		fi
+fi
+
+echo "Done. Syncing USB drive..."
+sync
+
+umount $1"1"
+echo; echo; echo;
+echo "You can now remove the usb stick."
