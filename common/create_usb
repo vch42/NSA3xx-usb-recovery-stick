@@ -2,7 +2,7 @@
 
 if [ -z "$1" ];
 	then
-		echo "No options found, $1 is not a block device or "$1"1 partition does not exist."
+		echo "No options found, aborting."
 		echo 'Usage: create_usb usb_device [XX:XX:XX:XX:XX:XX]'
 		echo 'eg. "create_usb /dev/sdd 11:22:44:33:AD:AD" '
 		exit 1
