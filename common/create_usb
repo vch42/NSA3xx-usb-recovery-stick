@@ -40,6 +40,7 @@ if [ -z "$2" ];
 		if [ $(echo $2 | egrep "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$") ];
 			then
 				sed -i "s/mrd_mac 00 19 CB 00 51 81/mrd_mac $(echo $2 | sed -e 's/:/ /g')/" /tmp/mnt/nsa310_fw/usb_key_func.sh.2
+				echo "Changed MAC address in usb_key_func.sh.2 to "$2
 			else
 				echo "Invalid MAC "$2" given. Keeping 00:19:CB:00:51:81"
 				sleep 5
