@@ -13,7 +13,7 @@ With "create_usb" script you can easily create a recovery USB stick for the foll
 * NSA325
 
 It is highly recomended to have console access to your NSA box during modding operations, or recovery ones, for that matter, in order to see any error messages that may appear.
-**Console access equals easyer debugging.**
+**Console access equals easier debugging.**
 
 ## How to use
 ### Using the *create_usb* script provided:
