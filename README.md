@@ -38,7 +38,7 @@ Obs.: *you can ommit the MAC address, in this case the default of 00:19:CB:00:51
 2. Unpack the archive.
 3. Make sure you have a USB drive handy, formatted preferably as fat32.
 4. Copy the entire content of the `content` directory directly into the USB drive root.
-5. If you want to set the correct MAC address of your box, edit the file `nsa310_fw/usb_key_func.sh.2`.
+5. If you want to set the correct MAC address of your box, edit the file `usb_key_func.sh.2`.
 
    The line you have to change is `${USB_FW_PATH}/mrd_mac 00 19 CB 00 51 81`
    
