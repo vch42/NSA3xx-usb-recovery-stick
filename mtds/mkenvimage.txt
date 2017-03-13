@@ -1,0 +1,2 @@
+mkenvimage -p 0x0 -s 0x20000 -o mtd1 mtd1.txt; \
+mkenvimage -p 0x0 -s 0x20000 -o mtd3 mtd3.txt
