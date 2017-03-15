@@ -30,7 +30,7 @@ echo "Will now write files to "$1"1!"
 echo $1"1 WILL BE WIPED!!!"
 sleep 5
 rm -rf /tmp/mnt > /dev/null 2>&1
-\cp -rpv ./content/* /tmp/mnt/; echo; echo; sleep 2
+\cp -rp ./content/* /tmp/mnt/; echo; echo; sleep 2
 
 
 if [ -z "$2" ];
