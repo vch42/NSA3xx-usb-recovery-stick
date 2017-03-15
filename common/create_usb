@@ -16,6 +16,7 @@ if [ -z "$1" ];
 fi
 
 mkdir -p /tmp/mnt
+umount $1"1" > /dev/null 2>&1
 mount $1"1" /tmp/mnt > /dev/null 2>&1
 
 if [ $(echo $?) -ne 0 ]; then
